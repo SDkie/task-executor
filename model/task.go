@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -13,7 +14,7 @@ import (
 //go:generate easytags task.go json
 //go:generate easytags task.go sql
 
-var retryTimeInterval = 10 * time.Second
+var TaskInterval = 10 * time.Second
 
 type Task struct {
 	ID uint64 `gorm:"primary_key" sql:"id" json:"id"`
@@ -23,6 +24,7 @@ type Task struct {
 	RetryUntil time.Time   `sql:"retry_until" json:"retry_until"`
 	Data       interface{} `sql:"-" json:"data"`
 	DataByte   []byte      `sql:"data_byte" json:"data_byte"`
+	MaxRetry   int64       `sql:"max_retry" json:"max_retry"`
 
 	Status     int    `sql:"status" json:"-"`
 	StatusMsg  string `sql:"status_msg" json:"-"`
@@ -31,7 +33,7 @@ type Task struct {
 	LastRun time.Time `sql:"last_run" json:"-"`
 	NextRun time.Time `sql:"next_run" json:"-"`
 
-	TotalRetry uint `sql:"total_retry" json:"-"`
+	TotalRetry int64 `sql:"total_retry" json:"-"`
 
 	// JSON String
 	CreatedAt time.Time  `sql:"created_at" json:"-"`
@@ -42,16 +44,20 @@ type Task struct {
 func (t *Task) Create() error {
 	var err error
 	t.Status = TASK_SCHEDULED
+	t.NextRun = time.Now()
 	t.DataByte, err = json.Marshal(t.Data)
 	if err != nil {
 		logrus.Error(err)
 		return err
 	}
 
-	t.RetryUntil = time.Now().Add(1 * time.Hour * 24)
+	if t.MaxRetry == 0 {
+		t.MaxRetry = -1
+	}
+
 	err = db.Create(t).Error
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("Error: During Task Create, %s", err)
 	}
 	return err
 }
@@ -60,13 +66,21 @@ func (t *Task) Update() error {
 	return db.Save(t).Error
 }
 
+func (t *Task) RunningStatus() {
+	t.Status = TASK_RUNNING
+	t.Update()
+}
+
 const (
 	TASK_SCHEDULED = iota
+	TASK_RUNNING
 	TASK_EXECUTED
-	TASK_ABORTED
+	TASK_EXPIRED
 )
 
-func (task Task) Run() {
+func (task *Task) Run() {
+	go task.RunningStatus()
+
 	task.LastRun = time.Now()
 	task.TotalRetry++
 
@@ -106,6 +120,31 @@ func (task Task) Run() {
 	task.Status = TASK_SCHEDULED
 	task.StatusCode = statusCode
 	task.StatusMsg = statusMsg
-	task.NextRun = time.Now().Add(retryTimeInterval)
-	task.Update()
+	task.NextRun = time.Now().Add(TaskInterval)
+	err = task.Update()
+	if err != nil {
+		logrus.Error("Error: During task Update", err)
+	}
+}
+
+func FindScheduledTasks() (*[]Task, error) {
+	tasks := new([]Task)
+	err := db.Where("status = ? AND next_run <= ?", TASK_SCHEDULED, time.Now()).Find(tasks).Error
+	return tasks, err
+}
+
+func (task *Task) CheckTaskValidity() (bool, error) {
+	if !task.RetryUntil.IsZero() && task.RetryUntil.Before(time.Now()) {
+		task.Status = TASK_EXPIRED
+		task.StatusMsg = fmt.Sprintf("Task expired at %s", task.RetryUntil)
+		err := task.Update()
+		return false, err
+	} else if task.MaxRetry != -1 && task.TotalRetry >= task.MaxRetry {
+		task.Status = TASK_EXPIRED
+		task.StatusMsg = fmt.Sprintf("Task expired after %d Retry", task.MaxRetry)
+		err := task.Update()
+		return false, err
+	}
+
+	return true, nil
 }

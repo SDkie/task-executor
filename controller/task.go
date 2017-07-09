@@ -15,10 +15,11 @@ import (
 // CreateTask adds the entry of task in task executor
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	input := &struct {
-		Url        string `valid:"required"`
-		Method     string `valid:"required"`
-		RetryUntil time.Time
-		Data       interface{}
+		Url        string      `json:"url" valid:"required"`
+		Method     string      `json:"method" valid:"required"`
+		Data       interface{} `json:"data"`
+		MaxRetry   int64       `json:"max_retry"`
+		RetryUntil time.Time   `json:"retry_until"`
 	}{}
 
 	err := json.NewDecoder(r.Body).Decode(input)
