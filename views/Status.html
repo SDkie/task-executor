@@ -45,16 +45,22 @@ th {
 <h1>JobRunner Status Report</h1>
 
 <table>
-	<tr><th>ID</th><th>Name</th><th>Status</th><th>Last run</th><th>Next run</th><th>Latency</th></tr>
+    <tr>
+        <th>ID</th>
+        <th>URL</th>
+        <th>Status</th>
+        <th>Last run</th>
+        <th>Next run</th>
+        <th>Total Retry</th></tr>
 {{range .}}
 
 	<tr>
-		<td>{{.Id}}</td>
-		<td>{{.JobRunner.Name}}</td>
-		<td>{{.JobRunner.Status}}</td>
-		<td>{{if not .Prev.IsZero}}{{.Prev.Format "2006-01-02 15:04:05"}}{{end}}</td>
-		<td>{{if not .Next.IsZero}}{{.Next.Format "2006-01-02 15:04:05"}}{{end}}</td>
-		<td>{{.JobRunner.Latency}}</td>
+		<td>{{.ID}}</td>
+		<td>{{.Url}}</td>
+		<td>{{.Status.String}}</td>
+		<td>{{if not .LastRun.IsZero}}{{.LastRun.Format "2006-01-02 15:04:05"}}{{end}}</td>
+		<td>{{if not .NextRun.IsZero}}{{.NextRun.Format "2006-01-02 15:04:05"}}{{end}}</td>
+		<td>{{.TotalRetry}}</td>
 	</tr>
 {{end}}
 </table>

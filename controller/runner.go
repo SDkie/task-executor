@@ -4,8 +4,8 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/SDkie/task-executor/model"
 	"github.com/SDkie/task-executor/utils"
-	"github.com/bamzi/jobrunner"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,7 +15,14 @@ func RunnerStatus(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
-	err = t.Execute(w, jobrunner.StatusPage())
+
+	tasks, err := model.GetAllTasks()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	err = t.Execute(w, *tasks)
 	if err != nil {
 		logrus.Error(err)
 		utils.WriteError(w, http.StatusInternalServerError, err)

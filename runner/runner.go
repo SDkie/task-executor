@@ -27,7 +27,8 @@ func (TaskRunner) Run() {
 			continue
 		}
 		if valid {
-			go t.Run()
+			tTask := t
+			go tTask.Run()
 		}
 	}
 }

@@ -26,9 +26,9 @@ type Task struct {
 	DataByte   []byte      `sql:"data_byte" json:"data_byte"`
 	MaxRetry   int64       `sql:"max_retry" json:"max_retry"`
 
-	Status     int    `sql:"status" json:"-"`
-	StatusMsg  string `sql:"status_msg" json:"-"`
-	StatusCode int    `sql:"status_code" json:"-"`
+	Status     TaskStatus `sql:"status" json:"status"`
+	StatusMsg  string     `sql:"status_msg" json:"-"`
+	StatusCode int        `sql:"status_code" json:"-"`
 
 	LastRun time.Time `sql:"last_run" json:"-"`
 	NextRun time.Time `sql:"next_run" json:"-"`
@@ -66,21 +66,28 @@ func (t *Task) Update() error {
 	return db.Save(t).Error
 }
 
-func (t *Task) RunningStatus() {
-	t.Status = TASK_RUNNING
-	t.Update()
-}
+type TaskStatus int
 
 const (
-	TASK_SCHEDULED = iota
-	TASK_RUNNING
+	TASK_SCHEDULED TaskStatus = iota
 	TASK_EXECUTED
 	TASK_EXPIRED
 )
 
-func (task *Task) Run() {
-	go task.RunningStatus()
+func (t TaskStatus) String() string {
+	switch t {
+	case TASK_SCHEDULED:
+		return "TASK_SCHEDULED"
+	case TASK_EXECUTED:
+		return "TASK_EXECUTED"
+	case TASK_EXPIRED:
+		return "TASK_EXPIRED"
+	}
 
+	return "TASK_INVALID"
+}
+
+func (task *Task) Run() {
 	task.LastRun = time.Now()
 	task.TotalRetry++
 
@@ -130,6 +137,12 @@ func (task *Task) Run() {
 func FindScheduledTasks() (*[]Task, error) {
 	tasks := new([]Task)
 	err := db.Where("status = ? AND next_run <= ?", TASK_SCHEDULED, time.Now()).Find(tasks).Error
+	return tasks, err
+}
+
+func GetAllTasks() (*[]Task, error) {
+	tasks := new([]Task)
+	err := db.Order("next_run desc").Find(tasks).Error
 	return tasks, err
 }
 

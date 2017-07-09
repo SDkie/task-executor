@@ -46,4 +46,6 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
+
+	utils.WriteSuccessResponse(w, task)
 }

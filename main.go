@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	logrus.SetLevel(logrus.DebugLevel)
 	r := initRoutes()
 	runner.Init()
 	http.ListenAndServe(":"+config.Get().Port, r)
@@ -19,7 +20,7 @@ func main() {
 func initRoutes() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/task", controller.CreateTask).Methods("POST")
-	r.HandleFunc("/runner/status", controller.RunnerStatus).Methods("GET")
+	r.HandleFunc("/tasks/status", controller.RunnerStatus).Methods("GET")
 	logrus.Info("Route : Initialized")
 	return r
 }
