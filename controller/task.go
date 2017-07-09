@@ -15,9 +15,9 @@ import (
 // CreateTask adds the entry of task in task executor
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	input := &struct {
-		Url        string    `valid:"required"`
-		Method     string    `valid:"required"`
-		RetryUntil time.Time `valid:"required"`
+		Url        string `valid:"required"`
+		Method     string `valid:"required"`
+		RetryUntil time.Time
 		Data       interface{}
 	}{}
 
