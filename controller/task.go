@@ -30,6 +30,18 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if input.MaxRetry < 0 {
+		err := fmt.Errorf("Error: MaxRetry is less then 0")
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !input.RetryUntil.IsZero() && input.RetryUntil.Before(time.Now()) {
+		err := fmt.Errorf("Error: RetryUnitl is less then current time")
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
 	task := new(model.Task)
 	err = copier.Copy(task, input)
 	if err != nil {
